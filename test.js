@@ -572,6 +572,91 @@ describe('an array of cidr blocks',function(){
     });
 });
 
+describe('mixing different types of filters',function(){
+    describe('whitelist', function () {
+        beforeEach(function(){
+            this.ipfilter = ipfilter(['127.0.0.1', '192.168.1.3/28', ['127.0.0.3', '127.0.0.35']], { cidr: true, mode: 'allow', log: false });
+            this.req = {
+                session: {},
+                headers: [],
+                connection: {
+                    remoteAddress: ''
+                }
+            };
+        });
+
+        it('should allow explicit ips',function(done){
+            this.req.connection.remoteAddress = '127.0.0.1';
+            this.ipfilter( this.req, {}, function(){
+                done();
+            });
+        });
+
+        it('should allow ips in a cidr block',function(done){
+            this.req.connection.remoteAddress = '192.168.1.1';
+            this.ipfilter( this.req, {}, function(){
+                done();
+            });
+        });
+
+        it('should allow ips in a range',function(done){
+            this.req.connection.remoteAddress = '127.0.0.20';
+            this.ipfilter( this.req, {}, function(){
+                done();
+            });
+        });
+    });
+
+    describe('blacklist', function(){
+        beforeEach(function(){
+            this.ipfilter = ipfilter(['127.0.0.1', '192.168.1.3/28', ['127.0.0.3', '127.0.0.35']], { cidr: true, ranges: true, mode: 'deny', log: false });
+            this.req = {
+                session: {},
+                headers: [],
+                connection: {
+                    remoteAddress: ''
+                }
+            };
+        });
+
+        it('should deny explicit ips',function(done){
+            this.req.connection.remoteAddress = '127.0.0.1';
+            var res = {
+                end: function(){
+                    assert.equal( 401, res.statusCode );
+                    done();
+                }
+            };
+
+            this.ipfilter( this.req, res, function(){});
+        });
+
+        it('should deny ips in a cidr block',function(done){
+            this.req.connection.remoteAddress = '192.168.1.15';
+            var res = {
+                end: function(){
+                    assert.equal( 401, res.statusCode );
+                    done();
+                }
+            };
+
+            this.ipfilter( this.req, res, function(){});
+        });
+
+        it('should deny ips in a range',function(done){
+            this.req.connection.remoteAddress = '127.0.0.15';
+            var res = {
+                end: function(){
+                    assert.equal( 401, res.statusCode );
+                    done();
+                }
+            };
+
+            this.ipfilter( this.req, res, function(){});
+        });
+    });
+});
+
 //CloudFlare Tests
 describe('enforcing cloudflare based client IP address blacklist restrictions', function(){
 
